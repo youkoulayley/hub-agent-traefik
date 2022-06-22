@@ -204,11 +204,11 @@ func (d Docker) getTraefikNetworks(ctx context.Context) ([]string, error) {
 }
 
 // GetIP gets container IP.
-func (d Docker) GetIP(ctx context.Context, containerName, network string) (string, error) {
-	ctnrName := containerName
+func (d Docker) GetIP(ctx context.Context, serviceName, network string) (string, error) {
+	containerName := serviceName
 
-	splitted := strings.Split(strings.TrimPrefix(containerName, "/"), "~")
-	if len(splitted) >= 2 {
+	splitted := strings.Split(strings.TrimPrefix(serviceName, "/"), "~")
+	if len(splitted) == 2 {
 		containers, err := d.client.ContainerList(ctx, types.ContainerListOptions{Filters: filters.NewArgs(filters.KeyValuePair{
 			Key:   "label",
 			Value: fmt.Sprintf("%s=%s", labelDockerComposeProject, splitted[0]),
@@ -221,11 +221,11 @@ func (d Docker) GetIP(ctx context.Context, containerName, network string) (strin
 		}
 
 		if len(containers) > 0 {
-			ctnrName = containers[0].ID
+			containerName = containers[0].ID
 		}
 	}
 
-	container, err := d.client.ContainerInspect(ctx, ctnrName)
+	container, err := d.client.ContainerInspect(ctx, containerName)
 	if err != nil {
 		return "", err
 	}
