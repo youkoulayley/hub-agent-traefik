@@ -207,7 +207,7 @@ func (d Docker) getTraefikNetworks(ctx context.Context) ([]string, error) {
 func (d Docker) GetIP(ctx context.Context, containerName, network string) (string, error) {
 	ctnrName := containerName
 
-	splitted := strings.Split(strings.TrimPrefix(containerName, "/"), "_")
+	splitted := strings.Split(strings.TrimPrefix(containerName, "/"), "~")
 	if len(splitted) >= 2 {
 		containers, err := d.client.ContainerList(ctx, types.ContainerListOptions{Filters: filters.NewArgs(filters.KeyValuePair{
 			Key:   "label",
@@ -327,7 +327,7 @@ func getServiceName(container types.ContainerJSON) string {
 	dcp, okp := container.Config.Labels[labelDockerComposeProject]
 	dcs, oks := container.Config.Labels[labelDockerComposeService]
 	if okp && oks {
-		name = dcp + "_" + dcs
+		name = dcp + "~" + dcs
 	}
 
 	return name
