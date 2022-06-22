@@ -211,10 +211,10 @@ func (d Docker) GetIP(ctx context.Context, containerName, network string) (strin
 	if len(splitted) >= 2 {
 		containers, err := d.client.ContainerList(ctx, types.ContainerListOptions{Filters: filters.NewArgs(filters.KeyValuePair{
 			Key:   "label",
-			Value: "com.docker.compose.project=" + splitted[0],
+			Value: fmt.Sprintf("%s=%s", labelDockerComposeProject, splitted[0]),
 		}, filters.KeyValuePair{
 			Key:   "label",
-			Value: "com.docker.compose.service=" + splitted[1],
+			Value: fmt.Sprintf("%s=%s", labelDockerComposeService, splitted[1]),
 		})})
 		if err != nil {
 			return "", fmt.Errorf("list containers: %w", err)
