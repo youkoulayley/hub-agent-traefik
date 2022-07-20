@@ -109,7 +109,6 @@ func NewClient(baseURL, token string) (*Client, error) {
 // Link links the agent to the Hub platform.
 func (c *Client) Link(ctx context.Context) (clusterID string, err error) {
 	body, err := json.Marshal(linkClusterReq{Platform: "other", Version: version.Version()})
-	fmt.Println(string(body))
 	if err != nil {
 		return "", fmt.Errorf("marshal link agent request: %w", err)
 	}

@@ -118,6 +118,7 @@ issues:
         - gochecknoinits
         - gochecknoglobals
         - maintidx
+        - nosnakecase
     - path: pkg/version/version.go
       linters:
         - gochecknoglobals
