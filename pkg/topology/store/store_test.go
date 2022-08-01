@@ -52,7 +52,7 @@ func TestStore_Write_fetchAndPatch(t *testing.T) {
 							Name:     "service-1",
 							Networks: []string{"network"},
 						},
-						Ports: []int{8080},
+						ExternalPorts: []int{8080},
 					},
 				},
 			},
@@ -81,7 +81,7 @@ func TestStore_Write_fetchAndPatch(t *testing.T) {
 							Name:     "service-1",
 							Networks: []string{"network"},
 						},
-						Ports: []int{8080},
+						ExternalPorts: []int{8080},
 					},
 				},
 			},
@@ -93,7 +93,7 @@ func TestStore_Write_fetchAndPatch(t *testing.T) {
 							Name:     "service-1",
 							Networks: []string{"new-network"},
 						},
-						Ports: []int{8080},
+						ExternalPorts: []int{8080},
 					},
 				},
 			},
@@ -117,7 +117,7 @@ func TestStore_Write_fetchAndPatch(t *testing.T) {
 							Name:     "service-1",
 							Networks: []string{"network"},
 						},
-						Ports: []int{8080},
+						ExternalPorts: []int{8080},
 					},
 				},
 			},
@@ -152,7 +152,7 @@ func TestStore_Write_fetchAndPatch(t *testing.T) {
 							Name:     "service-1",
 							Networks: []string{"network"},
 						},
-						Ports: []int{8080},
+						ExternalPorts: []int{8080},
 					},
 				},
 			},
@@ -164,7 +164,7 @@ func TestStore_Write_fetchAndPatch(t *testing.T) {
 							Name:     "service-1",
 							Networks: []string{"network"},
 						},
-						Ports: []int{8080, 8081},
+						ExternalPorts: []int{8080, 8081},
 					},
 				},
 			},
@@ -188,7 +188,7 @@ func TestStore_Write_fetchAndPatch(t *testing.T) {
 							Name:     "service-1",
 							Networks: []string{"network"},
 						},
-						Ports: []int{8080},
+						ExternalPorts: []int{8080},
 					},
 				},
 			},
@@ -213,7 +213,7 @@ func TestStore_Write_fetchAndPatch(t *testing.T) {
 							Name:     "service-1",
 							Networks: []string{"network"},
 						},
-						Ports: []int{8080},
+						ExternalPorts: []int{8080},
 					},
 					"service-2": {
 						Name: "service-2",
@@ -221,7 +221,7 @@ func TestStore_Write_fetchAndPatch(t *testing.T) {
 							Name:     "service-2",
 							Networks: []string{"network"},
 						},
-						Ports: []int{8080},
+						ExternalPorts: []int{8080},
 					},
 				},
 			},
@@ -233,7 +233,7 @@ func TestStore_Write_fetchAndPatch(t *testing.T) {
 							Name:     "service-2",
 							Networks: []string{"new-network"},
 						},
-						Ports: []int{8080},
+						ExternalPorts: []int{8080},
 					},
 				},
 			},
@@ -258,7 +258,7 @@ func TestStore_Write_fetchAndPatch(t *testing.T) {
 							Name:     "service-1",
 							Networks: []string{"network"},
 						},
-						Ports: []int{8080},
+						ExternalPorts: []int{8080},
 					},
 				},
 			},
@@ -270,7 +270,7 @@ func TestStore_Write_fetchAndPatch(t *testing.T) {
 							Name:     "service-1",
 							Networks: []string{"network"},
 						},
-						Ports: []int{8080},
+						ExternalPorts: []int{8080},
 					},
 				},
 			},
@@ -329,7 +329,7 @@ func TestStore_Write_alreadyFetched(t *testing.T) {
 					Name:     "service-1",
 					Networks: []string{"network"},
 				},
-				Ports: []int{8080},
+				ExternalPorts: []int{8080},
 			},
 		},
 	})
@@ -343,7 +343,7 @@ func TestStore_Write_alreadyFetched(t *testing.T) {
 					Name:     "service-1",
 					Networks: []string{"new-network"},
 				},
-				Ports: []int{8080},
+				ExternalPorts: []int{8080},
 			},
 		},
 	}
@@ -359,19 +359,19 @@ func TestStore_Write_retryOnPatchRetryableFailure(t *testing.T) {
 		OnFetchTopology().
 		TypedReturns(topology.Cluster{
 			Services: map[string]*topology.Service{
-				"service-1": {Name: "service-1", Ports: []int{8080}, Container: &topology.Container{Networks: []string{"network"}}},
+				"service-1": {Name: "service-1", ExternalPorts: []int{8080}, Container: &topology.Container{Networks: []string{"network"}}},
 			},
 		}, 1, nil).Once().
 		OnFetchTopology().
 		TypedReturns(topology.Cluster{
 			Services: map[string]*topology.Service{
-				"service-1": {Name: "service-1", Ports: []int{8080, 8081}, Container: &topology.Container{Networks: []string{"network"}}},
+				"service-1": {Name: "service-1", ExternalPorts: []int{8080, 8081}, Container: &topology.Container{Networks: []string{"network"}}},
 			},
 		}, 2, nil).Once().
 		OnFetchTopology().
 		TypedReturns(topology.Cluster{
 			Services: map[string]*topology.Service{
-				"service-1": {Name: "service-1", Ports: []int{8080, 8081, 8082}, Container: &topology.Container{Networks: []string{"network"}}},
+				"service-1": {Name: "service-1", ExternalPorts: []int{8080, 8081, 8082}, Container: &topology.Container{Networks: []string{"network"}}},
 			},
 		}, 3, nil).Once().
 		OnPatchTopology([]byte(removeSpaces(`{
@@ -409,7 +409,7 @@ func TestStore_Write_retryOnPatchRetryableFailure(t *testing.T) {
 					Name:     "service-1",
 					Networks: []string{"network"},
 				},
-				Ports: []int{8080},
+				ExternalPorts: []int{8080},
 			},
 		},
 	}
@@ -439,8 +439,8 @@ func TestStore_Write_doNotRetryOnPatchFatalFailure(t *testing.T) {
 	newTopology := topology.Cluster{
 		Services: map[string]*topology.Service{
 			"service-1": {
-				Name:  "service-1",
-				Ports: []int{8080},
+				Name:          "service-1",
+				ExternalPorts: []int{8080},
 			},
 		},
 	}
@@ -465,7 +465,7 @@ func TestStore_Write_abortOnFetchFailure(t *testing.T) {
 		OnFetchTopology().
 		TypedReturns(topology.Cluster{
 			Services: map[string]*topology.Service{
-				"service-1": {Name: "service-1", Ports: []int{8080}, Container: &topology.Container{Name: "service-1"}},
+				"service-1": {Name: "service-1", ExternalPorts: []int{8080}, Container: &topology.Container{Name: "service-1"}},
 			},
 		}, 1, nil).Once().
 		OnPatchTopology([]byte(removeSpaces(`{
@@ -487,7 +487,7 @@ func TestStore_Write_abortOnFetchFailure(t *testing.T) {
 					Name:     "service-1",
 					Networks: []string{"network"},
 				},
-				Ports: []int{8080},
+				ExternalPorts: []int{8080},
 			},
 		},
 	}

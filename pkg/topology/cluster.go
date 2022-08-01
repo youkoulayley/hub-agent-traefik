@@ -24,9 +24,9 @@ type Cluster struct {
 
 // Service describes a Service.
 type Service struct {
-	Name      string     `json:"name"`
-	Container *Container `json:"container,omitempty"`
-	Ports     []int      `json:"externalPorts,omitempty"`
+	Name          string     `json:"name"`
+	Container     *Container `json:"container,omitempty"`
+	ExternalPorts []int      `json:"externalPorts,omitempty"`
 }
 
 // Container describes a container.

@@ -133,9 +133,9 @@ func (d Docker) getServices(ctx context.Context) (map[string]*topology.Service, 
 
 		serviceName := getServiceName(containerInspect)
 		services[serviceName] = &topology.Service{
-			Name:      serviceName,
-			Container: info,
-			Ports:     ports,
+			Name:          serviceName,
+			Container:     info,
+			ExternalPorts: ports,
 		}
 	}
 

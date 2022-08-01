@@ -113,10 +113,10 @@ func (d DockerSwarm) getServices(ctx context.Context) (map[string]*topology.Serv
 			Logger()
 
 		for _, port := range service.Endpoint.Ports {
-			svc.Ports = append(svc.Ports, int(port.TargetPort))
+			svc.ExternalPorts = append(svc.ExternalPorts, int(port.TargetPort))
 		}
 
-		sort.Ints(svc.Ports)
+		sort.Ints(svc.ExternalPorts)
 
 		serviceInfo := d.getServiceInfo(loggerSvc.WithContext(ctx), service, networkMap)
 		if serviceInfo == nil {

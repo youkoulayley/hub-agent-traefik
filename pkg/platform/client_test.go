@@ -279,8 +279,8 @@ func TestClient_FetchTopology(t *testing.T) {
 			wantTopology: topology.Cluster{
 				Services: map[string]*topology.Service{
 					"service-1": {
-						Name:  "service-1",
-						Ports: []int{8080},
+						Name:          "service-1",
+						ExternalPorts: []int{8080},
 						Container: &topology.Container{
 							Name:     "service-1",
 							Networks: []string{"network"},
