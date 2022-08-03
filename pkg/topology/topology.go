@@ -17,6 +17,12 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 package topology
 
+// Reference describes a Reference.
+type Reference struct {
+	Topology Cluster `json:"topology"`
+	Version  int64   `json:"version"`
+}
+
 // Cluster describes a Cluster.
 type Cluster struct {
 	Services map[string]*Service `json:"services"`

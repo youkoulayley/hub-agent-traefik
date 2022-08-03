@@ -81,6 +81,10 @@ type linkClusterResp struct {
 	ClusterID string `json:"clusterId"`
 }
 
+type patchResp struct {
+	Version int64 `json:"version"`
+}
+
 // Client allows interacting with the cluster service.
 type Client struct {
 	baseURL    *url.URL
@@ -168,7 +172,7 @@ func (c *Client) Ping(ctx context.Context) error {
 	return c.do(req, nil)
 }
 
-func (c Client) do(req *http.Request, result interface{}) error {
+func (c *Client) do(req *http.Request, result interface{}) error {
 	req.Header.Set("Authorization", "Bearer "+c.token)
 
 	resp, err := c.httpClient.Do(req)
@@ -177,81 +181,55 @@ func (c Client) do(req *http.Request, result interface{}) error {
 	}
 	defer func() { _ = resp.Body.Close() }()
 
-	if resp.StatusCode/100 != 2 {
-		all, _ := io.ReadAll(resp.Body)
+	body, err := readBody(resp)
+	if err != nil {
+		return APIError{StatusCode: resp.StatusCode, Message: err.Error()}
+	}
 
+	if resp.StatusCode/100 != 2 {
 		apiErr := APIError{StatusCode: resp.StatusCode}
-		if err = json.Unmarshal(all, &apiErr); err != nil {
-			apiErr.Message = string(all)
+		if err = json.Unmarshal(body, &apiErr); err != nil {
+			apiErr.Message = string(body)
 		}
 
 		return apiErr
 	}
 
 	if result != nil {
-		if err = json.NewDecoder(resp.Body).Decode(result); err != nil {
-			return fmt.Errorf("decode config: %w", err)
+		if err = json.Unmarshal(body, result); err != nil {
+			return fmt.Errorf("decode response: %w", err)
 		}
 	}
 
 	return nil
 }
 
-type fetchResp struct {
-	Version  int64            `json:"version"`
-	Topology topology.Cluster `json:"topology"`
-}
-
 // FetchTopology fetches the topology.
-func (c *Client) FetchTopology(ctx context.Context) (topo topology.Cluster, topoVersion int64, err error) {
+func (c *Client) FetchTopology(ctx context.Context) (topology.Reference, error) {
 	baseURL, err := c.baseURL.Parse(path.Join(c.baseURL.Path, "topology"))
 	if err != nil {
-		return topology.Cluster{}, 0, fmt.Errorf("parse endpoint: %w", err)
+		return topology.Reference{}, fmt.Errorf("parse endpoint: %w", err)
 	}
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, baseURL.String(), http.NoBody)
 	if err != nil {
-		return topology.Cluster{}, 0, fmt.Errorf("build request: %w", err)
+		return topology.Reference{}, fmt.Errorf("build request: %w", err)
 	}
 
-	req.Header.Set("Authorization", "Bearer "+c.token)
 	req.Header.Set("Accept-Encoding", "gzip")
 
-	resp, err := c.httpClient.Do(req)
+	var r topology.Reference
+	err = c.do(req, &r)
 	if err != nil {
-		return topology.Cluster{}, 0, err
-	}
-	defer func() { _ = resp.Body.Close() }()
-
-	body, err := ungzipBody(resp)
-	if err != nil {
-		return topology.Cluster{}, 0, err
+		return topology.Reference{}, err
 	}
 
-	if resp.StatusCode != http.StatusOK {
-		apiErr := APIError{StatusCode: resp.StatusCode}
-		if err = json.Unmarshal(body, &apiErr); err != nil {
-			apiErr.Message = string(body)
-		}
-
-		return topology.Cluster{}, 0, apiErr
-	}
-
-	var r fetchResp
-	if err = json.Unmarshal(body, &r); err != nil {
-		return topology.Cluster{}, 0, fmt.Errorf("decode topology: %w", err)
-	}
-
-	return r.Topology, r.Version, nil
+	return r, nil
 }
 
-type patchResp struct {
-	Version int64 `json:"version"`
-}
-
-// PatchTopology submits a JSON Merge Patch to the platform containing the difference in the topology since
-// its last synchronization. The last known topology version must be provided. This version can be obtained
-// by calling the FetchTopology method.
+// PatchTopology submits a JSON Merge Patch to the platform containing the difference in the topology since its last synchronization.
+// The last known topology version must be provided.
+// This version can be obtained by calling the FetchTopology method.
 func (c *Client) PatchTopology(ctx context.Context, patch []byte, lastKnownVersion int64) (int64, error) {
 	baseURL, err := c.baseURL.Parse(path.Join(c.baseURL.Path, "topology"))
 	if err != nil {
@@ -263,31 +241,14 @@ func (c *Client) PatchTopology(ctx context.Context, patch []byte, lastKnownVersi
 		return 0, fmt.Errorf("build request: %w", err)
 	}
 
-	req.Header.Set("Authorization", "Bearer "+c.token)
 	req.Header.Set("Content-Type", "application/merge-patch+json")
 	req.Header.Set("Last-Known-Version", strconv.FormatInt(lastKnownVersion, 10))
 
 	// This operation cannot be retried without calling FetchTopology in between.
-	resp, err := c.httpClient.Do(req)
+	var body patchResp
+	err = c.do(req, &body)
 	if err != nil {
 		return 0, err
-	}
-	defer func() { _ = resp.Body.Close() }()
-
-	if resp.StatusCode != http.StatusOK {
-		all, _ := io.ReadAll(resp.Body)
-
-		apiErr := APIError{StatusCode: resp.StatusCode}
-		if err = json.Unmarshal(all, &apiErr); err != nil {
-			apiErr.Message = string(all)
-		}
-
-		return 0, apiErr
-	}
-
-	var body patchResp
-	if err = json.NewDecoder(resp.Body).Decode(&body); err != nil {
-		return 0, fmt.Errorf("decode topology: %w", err)
 	}
 
 	return body.Version, nil
@@ -315,7 +276,7 @@ func newGzippedRequestWithContext(ctx context.Context, verb, u string, body []by
 	return req, nil
 }
 
-func ungzipBody(resp *http.Response) ([]byte, error) {
+func readBody(resp *http.Response) ([]byte, error) {
 	contentEncoding := resp.Header.Get("Content-Encoding")
 
 	switch contentEncoding {

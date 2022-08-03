@@ -25,10 +25,10 @@ import (
 
 type providerMock struct{}
 
-func (m providerMock) Watch(ctx context.Context, fn func(map[string]*topology.Service)) error {
+func (m providerMock) Watch(_ context.Context, _ func(map[string]*topology.Service)) error {
 	return nil
 }
 
-func (m providerMock) GetIP(ctx context.Context, containerName, network string) (string, error) {
+func (m providerMock) GetIP(_ context.Context, _, _ string) (string, error) {
 	return "127.0.0.1", nil
 }

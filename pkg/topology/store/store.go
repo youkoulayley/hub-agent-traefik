@@ -33,7 +33,7 @@ import (
 
 // PlatformClient is capable of interacting with the platform.
 type PlatformClient interface {
-	FetchTopology(ctx context.Context) (topo topology.Cluster, version int64, err error)
+	FetchTopology(ctx context.Context) (reference topology.Reference, err error)
 	PatchTopology(ctx context.Context, patch []byte, lastKnownVersion int64) (int64, error)
 }
 
@@ -60,17 +60,17 @@ func (s *Store) Write(ctx context.Context, st topology.Cluster) error {
 
 	for {
 		if s.lastKnownVersion == 0 {
-			topo, version, err := s.platform.FetchTopology(ctx)
+			ref, err := s.platform.FetchTopology(ctx)
 			if err != nil {
 				return fmt.Errorf("fetch topology: %w", err)
 			}
 
-			s.lastTopology, err = json.Marshal(topo)
+			s.lastTopology, err = json.Marshal(ref.Topology)
 			if err != nil {
 				return fmt.Errorf("marshal topology: %w", err)
 			}
 
-			s.lastKnownVersion = version
+			s.lastKnownVersion = ref.Version
 		}
 
 		patch, newTopology, err := s.buildPatch(s.lastTopology, st)

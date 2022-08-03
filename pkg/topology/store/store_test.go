@@ -285,7 +285,7 @@ func TestStore_Write_fetchAndPatch(t *testing.T) {
 			t.Parallel()
 
 			platformClient := newPlatformClientMock(t).
-				OnFetchTopology().TypedReturns(test.fetchedTopology, test.fetchedVersion, nil).Once()
+				OnFetchTopology().TypedReturns(topology.Reference{Topology: test.fetchedTopology, Version: test.fetchedVersion}, nil).Once()
 
 			if test.wantPatch != "" {
 				patch := []byte(removeSpaces(test.wantPatch))
@@ -357,23 +357,35 @@ func TestStore_Write_alreadyFetched(t *testing.T) {
 func TestStore_Write_retryOnPatchRetryableFailure(t *testing.T) {
 	platformClient := newPlatformClientMock(t).
 		OnFetchTopology().
-		TypedReturns(topology.Cluster{
-			Services: map[string]*topology.Service{
-				"service-1": {Name: "service-1", ExternalPorts: []int{8080}, Container: &topology.Container{Networks: []string{"network"}}},
+		TypedReturns(topology.Reference{
+			Topology: topology.Cluster{
+				Services: map[string]*topology.Service{
+					"service-1": {Name: "service-1", ExternalPorts: []int{8080}, Container: &topology.Container{Networks: []string{"network"}}},
+				},
 			},
-		}, 1, nil).Once().
+			Version: 1,
+		}, nil).Once().
 		OnFetchTopology().
-		TypedReturns(topology.Cluster{
-			Services: map[string]*topology.Service{
-				"service-1": {Name: "service-1", ExternalPorts: []int{8080, 8081}, Container: &topology.Container{Networks: []string{"network"}}},
+		TypedReturns(
+			topology.Reference{
+				Topology: topology.Cluster{
+					Services: map[string]*topology.Service{
+						"service-1": {Name: "service-1", ExternalPorts: []int{8080, 8081}, Container: &topology.Container{Networks: []string{"network"}}},
+					},
+				},
+				Version: 2,
 			},
-		}, 2, nil).Once().
+			nil,
+		).Once().
 		OnFetchTopology().
-		TypedReturns(topology.Cluster{
-			Services: map[string]*topology.Service{
-				"service-1": {Name: "service-1", ExternalPorts: []int{8080, 8081, 8082}, Container: &topology.Container{Networks: []string{"network"}}},
+		TypedReturns(topology.Reference{
+			Topology: topology.Cluster{
+				Services: map[string]*topology.Service{
+					"service-1": {Name: "service-1", ExternalPorts: []int{8080, 8081, 8082}, Container: &topology.Container{Networks: []string{"network"}}},
+				},
 			},
-		}, 3, nil).Once().
+			Version: 3,
+		}, nil).Once().
 		OnPatchTopology([]byte(removeSpaces(`{
 			"services": {
 				"service-1": {
@@ -426,11 +438,20 @@ func TestStore_Write_retryOnPatchRetryableFailure(t *testing.T) {
 
 func TestStore_Write_doNotRetryOnPatchFatalFailure(t *testing.T) {
 	platformClient := newPlatformClientMock(t).
-		OnFetchTopology().TypedReturns(topology.Cluster{Services: map[string]*topology.Service{"service-1": {Name: "service-1"}}}, 1, nil).Once().
+		OnFetchTopology().TypedReturns(topology.Reference{
+		Topology: topology.Cluster{Services: map[string]*topology.Service{"service-1": {Name: "service-1"}}},
+		Version:  1,
+	}, nil).Once().
 		OnPatchTopology([]byte(`{"services":{"service-1":{"externalPorts":[8080]}}}`), 1).TypedReturns(0, errors.New("boom")).Once().
-		OnFetchTopology().TypedReturns(topology.Cluster{Services: map[string]*topology.Service{"service-1": {Name: "service-1"}}}, 2, nil).Once().
+		OnFetchTopology().TypedReturns(topology.Reference{
+		Topology: topology.Cluster{Services: map[string]*topology.Service{"service-1": {Name: "service-1"}}},
+		Version:  2,
+	}, nil).Once().
 		OnPatchTopology([]byte(`{"services":{"service-1":{"externalPorts":[8080]}}}`), 2).TypedReturns(0, platform.APIError{StatusCode: http.StatusInternalServerError}).Once().
-		OnFetchTopology().TypedReturns(topology.Cluster{Services: map[string]*topology.Service{"service-1": {Name: "service-1"}}}, 3, nil).Once().
+		OnFetchTopology().TypedReturns(topology.Reference{
+		Topology: topology.Cluster{Services: map[string]*topology.Service{"service-1": {Name: "service-1"}}},
+		Version:  3,
+	}, nil).Once().
 		OnPatchTopology([]byte(`{"services":{"service-1":{"externalPorts":[8080]}}}`), 3).TypedReturns(4, nil).Once().
 		Parent
 
@@ -461,13 +482,16 @@ func TestStore_Write_doNotRetryOnPatchFatalFailure(t *testing.T) {
 
 func TestStore_Write_abortOnFetchFailure(t *testing.T) {
 	platformClient := newPlatformClientMock(t).
-		OnFetchTopology().TypedReturns(topology.Cluster{}, 0, errors.New("boom")).Once().
+		OnFetchTopology().TypedReturns(topology.Reference{}, errors.New("boom")).Once().
 		OnFetchTopology().
-		TypedReturns(topology.Cluster{
-			Services: map[string]*topology.Service{
-				"service-1": {Name: "service-1", ExternalPorts: []int{8080}, Container: &topology.Container{Name: "service-1"}},
+		TypedReturns(topology.Reference{
+			Topology: topology.Cluster{
+				Services: map[string]*topology.Service{
+					"service-1": {Name: "service-1", ExternalPorts: []int{8080}, Container: &topology.Container{Name: "service-1"}},
+				},
 			},
-		}, 1, nil).Once().
+			Version: 1,
+		}, nil).Once().
 		OnPatchTopology([]byte(removeSpaces(`{
 			"services": {
 				"service-1": {
@@ -504,13 +528,25 @@ func TestStore_Write_abortOnFetchFailure(t *testing.T) {
 
 func TestStore_Write_giveUpOnRetryingWhenReachedBackoffLimit(t *testing.T) {
 	platformClient := newPlatformClientMock(t).
-		OnFetchTopology().TypedReturns(topology.Cluster{Services: map[string]*topology.Service{"service-1": {Name: "service-1"}}}, 1, nil).Once().
-		OnFetchTopology().TypedReturns(topology.Cluster{Services: map[string]*topology.Service{"service-1": {Name: "service-2"}}}, 2, nil).Once().
-		OnFetchTopology().TypedReturns(topology.Cluster{Services: map[string]*topology.Service{"service-1": {Name: "service-3"}}}, 3, nil).Once().
+		OnFetchTopology().TypedReturns(topology.Reference{
+		Topology: topology.Cluster{Services: map[string]*topology.Service{"service-1": {Name: "service-1"}}},
+		Version:  1,
+	}, nil).Once().
+		OnFetchTopology().TypedReturns(topology.Reference{
+		Topology: topology.Cluster{Services: map[string]*topology.Service{"service-1": {Name: "service-2"}}},
+		Version:  2,
+	}, nil).Once().
+		OnFetchTopology().TypedReturns(topology.Reference{
+		Topology: topology.Cluster{Services: map[string]*topology.Service{"service-1": {Name: "service-3"}}},
+		Version:  3,
+	}, nil).Once().
 		OnPatchTopology([]byte(`{"services":{"service-1":{"name":"service-5"}}}`), 1).TypedReturns(0, platform.APIError{StatusCode: http.StatusConflict}).Once().
 		OnPatchTopology([]byte(`{"services":{"service-1":{"name":"service-5"}}}`), 2).TypedReturns(0, platform.APIError{StatusCode: http.StatusConflict}).Once().
 		OnPatchTopology([]byte(`{"services":{"service-1":{"name":"service-5"}}}`), 3).TypedReturns(0, platform.APIError{StatusCode: http.StatusConflict}).Once().
-		OnFetchTopology().TypedReturns(topology.Cluster{Services: map[string]*topology.Service{"service-1": {Name: "service-4"}}}, 4, nil).Once().
+		OnFetchTopology().TypedReturns(topology.Reference{
+		Topology: topology.Cluster{Services: map[string]*topology.Service{"service-1": {Name: "service-4"}}},
+		Version:  4,
+	}, nil).Once().
 		OnPatchTopology([]byte(`{"services":{"service-1":{"name":"service-5"}}}`), 4).TypedReturns(5, nil).Once().
 		Parent
 

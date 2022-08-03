@@ -338,7 +338,7 @@ func TestClient_FetchTopology(t *testing.T) {
 			require.NoError(t, err)
 			c.httpClient = srv.Client()
 
-			gotTopology, gotVersion, err := c.FetchTopology(context.Background())
+			gotRef, err := c.FetchTopology(context.Background())
 			if test.wantErr != nil {
 				require.ErrorAs(t, err, test.wantErr)
 			} else {
@@ -346,8 +346,8 @@ func TestClient_FetchTopology(t *testing.T) {
 			}
 
 			assert.Equal(t, 1, callCount)
-			assert.Equal(t, test.wantVersion, gotVersion)
-			assert.Equal(t, test.wantTopology, gotTopology)
+			assert.Equal(t, test.wantVersion, gotRef.Version)
+			assert.Equal(t, test.wantTopology, gotRef.Topology)
 		})
 	}
 }
@@ -399,7 +399,6 @@ func TestClient_PatchTopology(t *testing.T) {
 
 	for _, test := range tests {
 		test := test
-
 		t.Run(test.desc, func(t *testing.T) {
 			t.Parallel()
 
@@ -468,13 +467,14 @@ func TestClient_PatchTopology(t *testing.T) {
 
 			gotVersion, err := c.PatchTopology(context.Background(), test.patch, test.lastKnownVersion)
 			if test.wantErr != nil {
+				t.Log(err)
 				require.ErrorAs(t, err, test.wantErr)
 			} else {
 				require.NoError(t, err)
 			}
 
-			assert.Equal(t, 1, callCount)
 			assert.EqualValues(t, test.wantVersion, gotVersion)
+			require.Equal(t, 1, callCount)
 		})
 	}
 }

@@ -26,14 +26,13 @@ func newPlatformClientMock(tb testing.TB) *platformClientMock {
 	return m
 }
 
-func (_m *platformClientMock) FetchTopology(_ context.Context) (topology.Cluster, int64, error) {
+func (_m *platformClientMock) FetchTopology(_ context.Context) (topology.Reference, error) {
 	_ret := _m.Called()
 
-	topo, _ := _ret.Get(0).(topology.Cluster)
-	version, _ := _ret.Get(1).(int64)
-	err := _ret.Error(2)
+	reference, _ := _ret.Get(0).(topology.Reference)
+	err := _ret.Error(1)
 
-	return topo, version, err
+	return reference, err
 }
 
 func (_m *platformClientMock) OnFetchTopology() *platformClientFetchTopologyCall {
@@ -89,12 +88,12 @@ func (_c *platformClientFetchTopologyCall) Maybe() *platformClientFetchTopologyC
 	return _c
 }
 
-func (_c *platformClientFetchTopologyCall) TypedReturns(a topology.Cluster, b int64, c error) *platformClientFetchTopologyCall {
-	_c.Call = _c.Return(a, b, c)
+func (_c *platformClientFetchTopologyCall) TypedReturns(a topology.Reference, b error) *platformClientFetchTopologyCall {
+	_c.Call = _c.Return(a, b)
 	return _c
 }
 
-func (_c *platformClientFetchTopologyCall) ReturnsFn(fn func() (topology.Cluster, int64, error)) *platformClientFetchTopologyCall {
+func (_c *platformClientFetchTopologyCall) ReturnsFn(fn func() (topology.Reference, error)) *platformClientFetchTopologyCall {
 	_c.Call = _c.Return(fn)
 	return _c
 }
